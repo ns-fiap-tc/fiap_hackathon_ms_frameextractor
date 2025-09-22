@@ -29,9 +29,9 @@ jobs:
           docker build \
           --build-arg MODE=prod \
           --build-arg PROFILE=prod \
-          -t ${{ secrets.DOCKERHUB_GUILHERME_USERNAME }}/fiap_hackaton_ms_frameextractor:latest \
+          -t ${{ secrets.DOCKERHUB_GUILHERME_USERNAME }}/fiap_hackathon_ms_frameextractor:latest \
           -f Dockerfile .
 
       - name: 🚀 Push da imagem do ms-frameextractor do App Fiap Hacka
         run: |
-          docker push ${{ secrets.DOCKERHUB_GUILHERME_USERNAME }}/fiap_hackaton_ms_frameextractor:latest
+          docker push ${{ secrets.DOCKERHUB_GUILHERME_USERNAME }}/fiap_hackathon_ms_frameextractor:latest
