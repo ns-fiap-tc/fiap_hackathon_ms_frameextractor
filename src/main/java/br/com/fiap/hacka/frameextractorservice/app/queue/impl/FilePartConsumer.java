@@ -4,9 +4,9 @@ import br.com.fiap.hacka.core.commons.dto.FilePartDto;
 import br.com.fiap.hacka.core.commons.dto.NotificacaoDto;
 import br.com.fiap.hacka.frameextractorservice.app.queue.MessageProducer;
 import br.com.fiap.hacka.frameextractorservice.app.rest.client.NotificacaoServiceClient;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Scope;
+//import io.opentelemetry.api.trace.Span;
+//import io.opentelemetry.api.trace.Tracer;
+//import io.opentelemetry.context.Scope;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -18,6 +18,8 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -26,15 +28,20 @@ public class FilePartConsumer {
     private static final Map<String, FileProcessor> fileProcessors = new ConcurrentHashMap<>();
     private static final Set<String> failedFiles = ConcurrentHashMap.newKeySet();
     private final ExecutorService fileProcessingExecutor;
-    private final Tracer tracer;
+    //private final Tracer tracer;
     private final MessageProducer messageProducer;
     private final NotificacaoServiceClient notificacaoServiceClient;
+    private final S3Client s3Client;
+    private final S3Presigner s3Presigner;
 
     @Value("${rabbitmq.queue.producer.messageQueue}")
     private String queueName;
 
     @Value("${file.processing.frame.interval}")
     private int frameInterval;
+
+    @Value("${aws.s3.bucket-name}")
+    private String bucketName;
 
     @RabbitListener(queues = "${rabbitmq.queue.consumer.messageQueue}")
     public void receive(@Payload FilePartDto filePartDto) {
@@ -51,17 +58,21 @@ public class FilePartConsumer {
 
         log.info("Received chunk for file [{}], bytesRead={}", fileName, filePartDto.getBytesRead());
 
-        Span span = tracer.spanBuilder("process-file-chunk").startSpan();
-        try (Scope scope = span.makeCurrent()) {
+        //Span span = tracer.spanBuilder("process-file-chunk").startSpan();
+        try /*(Scope scope = span.makeCurrent())*/ {
             fileProcessors
                     .computeIfAbsent(fileName, name -> {
-                        FileProcessor processor = new FileProcessor(name, this, frameInterval);
+                        FileProcessor processor = new FileProcessor(name, this, frameInterval, s3Client, s3Presigner, bucketName);
 
                         fileProcessingExecutor.submit(new Runnable() {
                             @Override
                             public void run() {
                                 try {
-                                    processor.process();
+                                    String urlDownload = processor.process();
+                                    notificacaoServiceClient.sendWebhook(
+                                            new NotificacaoDto(
+                                                    "Arquivo " + fileName + " processado com sucesso. Link download: "+urlDownload,
+                                                    filePartDto.getWebhookUrl()));
                                 } catch (Exception e) {
                                     log.error("Error processing file [{}]: {}", fileName, e.getMessage(), e);
 
@@ -89,11 +100,11 @@ public class FilePartConsumer {
             // send chunk to queue
             this.messageProducer.send(queueName, filePartDto);
         } finally {
-            span.end();
+            //span.end();
         }
     }
 
-    public void receiveOld(FilePartDto filePartDto) {
+    /*public void receiveOld(FilePartDto filePartDto) {
         String fileName = filePartDto.getFileName();
         log.info("Received chunk for file [{}], bytesRead={}", fileName, filePartDto.getBytesRead());
 
@@ -112,7 +123,7 @@ public class FilePartConsumer {
         } finally {
             span.end();
         }
-    }
+    }*/
 
     void removeProcessor(String fileName) {
         fileProcessors.remove(fileName);

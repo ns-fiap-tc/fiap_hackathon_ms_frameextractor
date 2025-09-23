@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.time.Duration;
 import java.util.Iterator;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
@@ -29,6 +30,12 @@ import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 @Slf4j
 public class FileProcessor {
@@ -41,8 +48,15 @@ public class FileProcessor {
     private final File zipFile;
     private volatile boolean finished = false;
     private final int frameInterval;
+    private final S3Client s3Client;
+    private final S3Presigner s3Presigner;
+    private final String bucketName;
+    private String userName;
 
-    public FileProcessor(String fileName, FilePartConsumer parent, int frameInterval) {
+    public FileProcessor(String fileName, FilePartConsumer parent, int frameInterval, S3Client s3Client, S3Presigner s3Presigner, String bucketName) {
+        this.s3Client = s3Client;
+        this.s3Presigner = s3Presigner;
+        this.bucketName = bucketName;
         this.fileName = fileName;
         this.parent = parent;
         this.frameInterval = frameInterval;
@@ -60,22 +74,39 @@ public class FileProcessor {
         queue.offer(part);
     }
 
-    public void process() {
+    public String process() {
         // Step 1: Collect all chunks sequentially from the queue
         ByteArrayOutputStream videoBuffer = new ByteArrayOutputStream();
         try {
             while (true) {
                 FilePartDto part = queue.take(); // blocks until chunk arrives
                 if (part.getBytesRead() == -1) {
-                    part.setFrameFilePath("caminho_no_S3"); //TODO incluir a url do arquivo na S3.!
+                    this.userName = part.getUserName();
                     break; // EOF
                 }
                 videoBuffer.write(part.getBytes(), 0, part.getBytesRead());
             }
+            String s3Key = "frames/"+ this.userName + "/" + fileName + ".zip";
 
-            try (InputStream videoStream = new ByteArrayInputStream(videoBuffer.toByteArray());
-                 FileOutputStream fos = new FileOutputStream(zipFile);
-                 ZipOutputStream zipOut = new ZipOutputStream(fos)) {
+            // Streams conectados: tudo que escrever no pos pode ser lido no pis
+            PipedOutputStream pos = new PipedOutputStream();
+            PipedInputStream pis = new PipedInputStream(pos);
+
+            // Inicia thread que vai fazer upload enquanto escrevemos no zip
+            new Thread(() -> {
+                try {
+                    s3Client.putObject(
+                            PutObjectRequest.builder().bucket(bucketName).key(s3Key).build(),
+                            RequestBody.fromBytes(pis.readAllBytes())
+                    );
+                    //log.info("Upload finalizado no S3: {}", getPresignedUrl("frames/"+ "usuario" + "/" + fileName + ".zip"));
+                } catch (Exception e) {
+                    log.error("Erro no upload para S3", e);
+                }
+            }).start();
+
+            try (ZipOutputStream zipOut = new ZipOutputStream(pos);
+                 InputStream videoStream = new ByteArrayInputStream(videoBuffer.toByteArray())) {
 
                 FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(videoStream);
                 grabber.start();
@@ -118,13 +149,29 @@ public class FileProcessor {
                 }
                 grabber.stop();
                 parent.removeProcessor(fileName);
-                log.info("File {} processed and zipped successfully: {}", fileName, zipFile.getAbsolutePath());
+                String urlDownload = getPresignedUrl(s3Key);
+                log.info("File {} processed and zipped successfully: {}", fileName, getPresignedUrl(s3Key));
+                return urlDownload;
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        } catch (InterruptedException e) {
+        } catch (InterruptedException | IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private String getPresignedUrl(String objectKey) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(objectKey)
+                .build();
+
+        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(30))
+                .getObjectRequest(getObjectRequest)
+                .build();
+
+        return s3Presigner.presignGetObject(presignRequest).url().toString();
     }
 
     /**
