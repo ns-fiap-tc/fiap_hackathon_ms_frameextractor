@@ -1,19 +1,19 @@
-resource "kubernetes_secret" "secrets-ms-processamento" {
+resource "kubernetes_secret" "secrets-ms-frameextractor" {
   metadata {
-    name = "secrets-ms-processamento"
+    name = "secrets-ms-frameextractor"
   }
 
   type = "Opaque"
 
   data = {
-    DB_HOST             = data.kubernetes_service.mongodb-service.metadata[0].name
+    /*DB_HOST             = data.kubernetes_service.mongodb-service.metadata[0].name
     DB_PORT             = var.db_hacka_port
     DB_NAME             = var.db_hacka_name
     DB_USER             = var.db_hacka_username
-    DB_PASS             = var.db_hacka_password
+    DB_PASS             = var.db_hacka_password */
 
     MESSAGE_QUEUE_HOST   = data.kubernetes_service.messagequeue_service.metadata[0].name
-    //NOTIFICACAO_SERVICE_HOST = data.kubernetes_service.service-ms-produto.metadata[0].name
+    NOTIFICACAO_SERVICE_CLIENT = data.kubernetes_service.service-ms-notificacao.metadata[0].name
 
     AWS_REGION=var.aws_region
     AWS_S3_BUCKET_NAME=var.aws_s3_bucket_name
@@ -26,10 +26,10 @@ resource "kubernetes_secret" "secrets-ms-processamento" {
   }
 }
 
-# MS PROCESSAMENTO 
-resource "kubernetes_deployment" "deployment-ms-processamento" {
+# MS FRAMEEXTRACTOR 
+resource "kubernetes_deployment" "deployment-ms-frameextractor" {
   metadata {
-    name      = "deployment-ms-processamento"
+    name      = "deployment-ms-frameextractor"
     namespace = "default"
   }
 
@@ -38,14 +38,14 @@ resource "kubernetes_deployment" "deployment-ms-processamento" {
 
     selector {
       match_labels = {
-        app = "deployment-ms-processamento"
+        app = "deployment-ms-frameextractor"
       }
     }
 
     template {
       metadata {
         labels = {
-          app = "deployment-ms-processamento"
+          app = "deployment-ms-frameextractor"
         }
       }
 
@@ -58,8 +58,8 @@ resource "kubernetes_deployment" "deployment-ms-processamento" {
         }
 
         container {
-          name  = "deployment-ms-processamento-container"
-          image = "${var.dockerhub_username}/fiap_hackathon_ms_processamento:latest"
+          name  = "deployment-ms-frameextractor-container"
+          image = "${var.dockerhub_username}/fiap_hackathon_ms_frameextractor:latest"
 
           resources {
             requests = {
@@ -74,7 +74,7 @@ resource "kubernetes_deployment" "deployment-ms-processamento" {
 
           env_from {
             secret_ref {
-              name = kubernetes_secret.secrets-ms-processamento.metadata[0].name
+              name = kubernetes_secret.secrets-ms-frameextractor.metadata[0].name
             }
           }
 
@@ -111,9 +111,9 @@ resource "kubernetes_deployment" "deployment-ms-processamento" {
   #depends_on = [kubernetes_deployment.messagequeue_deployment]
 }
 
-resource "kubernetes_service" "service-ms-processamento" {
+resource "kubernetes_service" "service-ms-frameextractor" {
   metadata {
-    name      = "service-ms-processamento"
+    name      = "service-ms-frameextractor"
     namespace = "default"
     annotations = {
       "service.beta.kubernetes.io/aws-load-balancer-type" : "nlb",
@@ -123,7 +123,7 @@ resource "kubernetes_service" "service-ms-processamento" {
   }
   spec {
     selector = {
-      app = "deployment-ms-processamento"
+      app = "deployment-ms-frameextractor"
     }
     port {
       port = "80"
@@ -134,9 +134,9 @@ resource "kubernetes_service" "service-ms-processamento" {
 }
 
 # Horizontal Pod Autoscaler (HPA)
-resource "kubernetes_horizontal_pod_autoscaler_v2" "hpa-ms-processamento" {
+resource "kubernetes_horizontal_pod_autoscaler_v2" "hpa-ms-frameextractor" {
   metadata {
-    name      = "hpa-ms-processamento"
+    name      = "hpa-ms-frameextractor"
     namespace = "default"
   }
 
@@ -144,7 +144,7 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "hpa-ms-processamento" {
     scale_target_ref {
       api_version = "apps/v1"
       kind        = "Deployment"
-      name        = kubernetes_deployment.deployment-ms-processamento.metadata[0].name
+      name        = kubernetes_deployment.deployment-ms-frameextractor.metadata[0].name
     }
 
     min_replicas = 1

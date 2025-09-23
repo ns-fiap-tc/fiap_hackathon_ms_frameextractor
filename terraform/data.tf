@@ -24,10 +24,10 @@ data "kubernetes_service" "messagequeue_service" {
   }
 }
 
-# data "kubernetes_service" "service-ms-notificacao" {
-#   metadata {
-#     name      = "service-ms-notificacao"
-#     namespace = "default"
-#   }
-# }
+data "kubernetes_service" "service-ms-notificacao" {
+  metadata {
+    name      = "service-ms-notificacao"
+    namespace = "default"
+  }
+}
 
