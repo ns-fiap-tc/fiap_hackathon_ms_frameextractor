@@ -78,15 +78,17 @@ public class FileProcessor {
         // Step 1: Collect all chunks sequentially from the queue
         ByteArrayOutputStream videoBuffer = new ByteArrayOutputStream();
         try {
+            String s3Key = "frames/"+ this.userName + "/" + fileName + ".zip";
+            String urls3 = getPresignedUrl(s3Key);
             while (true) {
                 FilePartDto part = queue.take(); // blocks until chunk arrives
                 if (part.getBytesRead() == -1) {
                     this.userName = part.getUserName();
+                    part.setFrameFilePath(urls3);
                     break; // EOF
                 }
                 videoBuffer.write(part.getBytes(), 0, part.getBytesRead());
             }
-            String s3Key = "frames/"+ this.userName + "/" + fileName + ".zip";
 
             // Streams conectados: tudo que escrever no pos pode ser lido no pis
             PipedOutputStream pos = new PipedOutputStream();
@@ -149,9 +151,8 @@ public class FileProcessor {
                 }
                 grabber.stop();
                 parent.removeProcessor(fileName);
-                String urlDownload = getPresignedUrl(s3Key);
-                log.info("File {} processed and zipped successfully: {}", fileName, getPresignedUrl(s3Key));
-                return urlDownload;
+                log.info("File {} processed and zipped successfully: {}", fileName, urls3);
+                return urls3;
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
