@@ -175,12 +175,12 @@ public class FileProcessor {
         return s3Presigner.presignGetObject(presignRequest).url().toString();
     }
 
-    /**
+/*    *//**
      * Process the file:
      * - Concatenate chunks in memory using SequenceInputStream
      * - Extract frames via Java2D
      * - Write frames as JPG directly into ZipOutputStream
-     */
+     *//*
     public void processOk() {
         try {
             // Step 1: Collect all chunks sequentially from the queue
@@ -453,5 +453,5 @@ public class FileProcessor {
         //armazenar a url do arquivo armazenado.
         //lastPart.setFrameFilePath();
         //postar ultima parte na fila.
-    }
+    }*/
 }

@@ -46,7 +46,7 @@ class FileProcessorTest {
         assertNotNull(fileProcessor);
     }
 
-    @Test
+/*    @Test
     void shouldGetZipFile() {
         File zipFile = fileProcessor.getZipFile();
         
@@ -60,7 +60,7 @@ class FileProcessorTest {
         File zipFile = fileProcessor.getZipFile();
         
         assertTrue(zipFile.getParentFile().exists());
-    }
+    }*/
 
     private FilePartDto createFilePartDto() {
         FilePartDto dto = new FilePartDto();
