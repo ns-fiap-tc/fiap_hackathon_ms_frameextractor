@@ -78,6 +78,40 @@ resource "kubernetes_deployment" "deployment-ms-frameextractor" {
             }
           }
 
+          # Configurações de Observabilidade
+          env {
+            name  = "MANAGEMENT_METRICS_EXPORT_OTLP_ENDPOINT"
+            value = "http://otel-collector:4318/v1/metrics"
+          }
+          env {
+            name  = "MANAGEMENT_METRICS_EXPORT_OTLP_PROTOCOL"
+            value = "http/protobuf"
+          }
+          env {
+            name  = "MANAGEMENT_METRICS_TAGS_APPLICATION"
+            value = "frameextractor-service"
+          }
+          env {
+            name  = "MANAGEMENT_METRICS_TAGS_SERVICE"
+            value = "ms-frameextractor"
+          }
+          env {
+            name  = "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE"
+            value = "health,info,metrics,prometheus"
+          }
+          env {
+            name  = "MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILES_HISTOGRAMS"
+            value = "true"
+          }
+          env {
+            name  = "MANAGEMENT_METRICS_DISTRIBUTION_MINIMUM_EXPECTED_VALUE"
+            value = "1ms"
+          }
+          env {
+            name  = "MANAGEMENT_METRICS_DISTRIBUTION_MAXIMUM_EXPECTED_VALUE"
+            value = "30s"
+          }
+
           port {
             container_port = "8080"
           }
@@ -118,7 +152,10 @@ resource "kubernetes_service" "service-ms-frameextractor" {
     annotations = {
       "service.beta.kubernetes.io/aws-load-balancer-type" : "nlb",
       "service.beta.kubernetes.io/aws-load-balancer-scheme" : "internal",
-      "service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled" : "true"
+      "service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled" : "true",
+      "prometheus.io/scrape" = "true",
+      "prometheus.io/port" = "8080",
+      "prometheus.io/path" = "/actuator/prometheus"
     }
   }
   spec {
