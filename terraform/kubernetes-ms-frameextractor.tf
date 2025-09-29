@@ -80,12 +80,12 @@ resource "kubernetes_deployment" "deployment-ms-frameextractor" {
 
           # Configurações de Observabilidade
           env {
-            name  = "MANAGEMENT_METRICS_EXPORT_OTLP_ENDPOINT"
+            name  = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
             value = "http://otel-collector.observability:4318/v1/metrics"
           }
           env {
-            name  = "MANAGEMENT_METRICS_EXPORT_OTLP_PROTOCOL"
-            value = "http/protobuf"
+            name  = "OTEL_EXPORTER_OTLP_METRICS_ENABLED"
+            value = "true"
           }
           env {
             name  = "MANAGEMENT_METRICS_TAGS_APPLICATION"
