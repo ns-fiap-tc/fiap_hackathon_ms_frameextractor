@@ -99,18 +99,6 @@ resource "kubernetes_deployment" "deployment-ms-frameextractor" {
             name  = "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE"
             value = "health,info,metrics,prometheus"
           }
-          env {
-            name  = "MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILES_HISTOGRAMS"
-            value = "true"
-          }
-          env {
-            name  = "MANAGEMENT_METRICS_DISTRIBUTION_MINIMUM_EXPECTED_VALUE"
-            value = "1ms"
-          }
-          env {
-            name  = "MANAGEMENT_METRICS_DISTRIBUTION_MAXIMUM_EXPECTED_VALUE"
-            value = "30s"
-          }
 
           port {
             container_port = "8080"
