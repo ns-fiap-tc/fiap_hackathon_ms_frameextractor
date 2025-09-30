@@ -78,7 +78,10 @@ resource "kubernetes_deployment" "deployment-ms-frameextractor" {
             }
           }
 
-          # Configurações de Observabilidade
+          env {
+            name  = "MESSAGE_QUEUE_HOST"
+            value = kubernetes_service.messagequeue_service.metadata[0].name
+          }
           env {
             name  = "MANAGEMENT_METRICS_EXPORT_OTLP_ENDPOINT"
             value = "http://otel-collector.observability.svc.cluster.local:4318/v1/metrics"
