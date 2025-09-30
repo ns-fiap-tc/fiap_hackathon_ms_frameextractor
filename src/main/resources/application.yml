@@ -1,0 +1,26 @@
+management:
+  metrics:
+    export:
+      otlp:
+        endpoint: http://otel-collector.observability.svc.cluster.local:4318/v1/metrics
+        protocol: http/protobuf
+        enabled: true
+    tags:
+      application: frameextractor-service
+      service: ms-frameextractor
+    distribution:
+      percentiles-histograms: true
+      minimum-expected-value:
+        http.server.requests: 1ms
+      maximum-expected-value:
+        http.server.requests: 30s
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
