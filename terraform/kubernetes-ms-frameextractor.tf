@@ -79,11 +79,15 @@ resource "kubernetes_deployment" "deployment-ms-frameextractor" {
           }
 
           env {
-            name  = "MANAGEMENT_OTLP_METRICS_EXPORT_URL"
+            name  = "MANAGEMENT_METRICS_EXPORT_OTLP_ENDPOINT"
             value = "http://otel-collector.observability.svc.cluster.local:4318/v1/metrics"
           }
           env {
-            name  = "MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED"
+            name  = "MANAGEMENT_METRICS_EXPORT_OTLP_PROTOCOL"
+            value = "http/protobuf"
+          }
+          env {
+            name  = "MANAGEMENT_METRICS_EXPORT_OTLP_ENABLED"
             value = "true"
           }
           env {
@@ -91,8 +95,8 @@ resource "kubernetes_deployment" "deployment-ms-frameextractor" {
             value = "frameextractor-service"
           }
           env {
-            name  = "MANAGEMENT_METRICS_TAGS_ENVIRONMENT"
-            value = "production"
+            name  = "MANAGEMENT_METRICS_TAGS_SERVICE"
+            value = "ms-frameextractor"
           }
 
           port {
